@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EPUB 阅读器</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      margin: 0;
+      padding: 0;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+
+    #header {
+      background-color: #007bff;
+      color: #fff;
+      padding: 20px 0;
+      text-align: center;
+      font-size: 24px;
+    }
+
+    #nav {
+      background-color: #f8f9fa;
+      padding: 10px 0;
+      text-align: center;
+    }
+
+    #viewer {
+      margin: 20px;
+      padding: 20px;
+      border: 1px solid #ccc;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      background-color: #fff;
+      overflow: hidden; /* 不允许滚动 */
+      background-color: #f0f0f0; /* 护眼背景色 */
+      position: relative;
+    }
+
+    select {
+      font-size: 16px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    .arrow-button {
+      font-size: 24px;
+      padding: 8px;
+      border: none;
+      background-color: transparent;
+      color: #007bff;
+      cursor: pointer;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      z-index: 1;
+    }
+
+    .arrow-button:hover {
+      color: #0056b3;
+    }
+
+    .arrow-button[disabled] {
+      color: #ccc;
+      cursor: not-allowed;
+    }
+
+    #prev {
+      left: 0;
+    }
+
+    #next {
+      right: 0;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Noto Serif', serif;
+      text-align: center;
+    }
+
+    p, li {
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="header">
+      EPUB 阅读器
+    </div>
+
+    <div id="nav">
+      <select id="toc"></select>
+    </div>
+
+    <div id="viewer">
+      <button onclick="prevPage()" id="prev" class="arrow-button" disabled>&lt;</button>
+      <button onclick="nextPage()" id="next" class="arrow-button" disabled>&gt;</button>
+      <div id="content"></div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+  <script src="https://futurepress.github.io/epub.js/dist/epub.js"></script>
+  <script>
+    var $content = document.getElementById("content");
+    var rendition;
+
+    // Load the opf
+    var book = ePub("https://file.notion.so/f/f/9cef305e-2b0f-490d-9ec3-dc603b2d3615/59479293-2b3e-402b-b019-bdc075fec72d/%E4%BD%A0%E5%BD%93%E5%83%8F%E9%B8%9F%E9%A3%9E%E5%BE%80%E4%BD%A0%E7%9A%84%E5%B1%B1_--_%E5%A1%94%E6%8B%89%E9%9F%A6%E6%96%AF%E7%89%B9%E5%BC%97_--_2019_--_41ac6f53ca340ea52a2988bcf733e17c_--_Annas_Archive.epub?id=6ec721ee-5725-4416-b72b-4e9209ade077&table=block&spaceId=9cef305e-2b0f-490d-9ec3-dc603b2d3615&expirationTimestamp=1712714400000&signature=tnlXm5zag2e1l_Jwmm1ncsHecC0OWoJscKmQz2vgX-k&downloadName=%E4%BD%A0%E5%BD%93%E5%83%8F%E9%B8%9F%E9%A3%9E%E5%BE%80%E4%BD%A0%E7%9A%84%E5%B1%B1+--+%E5%A1%94%E6%8B%89%C2%B7%E9%9F%A6%E6%96%AF%E7%89%B9%E5%BC%97+--+2019+--+41ac6f53ca340ea52a2988bcf733e17c+--+Anna%E2%80%99s+Archive.epub", {
+      worker: "https://futurepress.github.io/epub.js/dist/epub.worker.min.js"
+    });
+
+    book.loaded.navigation.then(function(toc){
+      var $select = document.getElementById("toc"),
+          docfrag = document.createDocumentFragment();
+
+      toc.forEach(function(chapter) {
+        var option = document.createElement("option");
+        option.textContent = chapter.label;
+        option.value = chapter.href;
+
+        docfrag.appendChild(option);
+      });
+
+      $select.appendChild(docfrag);
+
+      $select.onchange = function(){
+          var index = $select.selectedIndex,
+              url = $select.options[index].value;
+          rendition.display(url);
+          return false;
+      };
+
+      rendition = book.renderTo($content, {
+        width: "100%",
+        height: "100%"
+      });
+
+      rendition.display().then(function() {
+        console.log("Rendered initial chapter");
+        updateButtons();
+      });
+    });
+
+    function prevPage() {
+      if (rendition) {
+        rendition.prev();
+        updateButtons();
+      }
+    }
+
+    function nextPage() {
+      if (rendition) {
+        rendition.next();
+        updateButtons();
+      }
+    }
+
+    function updateButtons() {
+      if (rendition) {
+        var prev = rendition.prev();
+        var next = rendition.next();
+        document.getElementById("prev").disabled = !prev;
+        document.getElementById("next").disabled = !next;
+      } else {
+        document.getElementById("prev").disabled = true;
+        document.getElementById("next").disabled = true;
+      }
+    }
+  </script>
+</body>
+</html>
