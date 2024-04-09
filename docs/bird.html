@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>EPUB 阅读器</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif:wght@400;700&family=Noto+Sans+SC:wght@400;700&display=swap');
+
+    body {
+      font-family: 'Noto Sans SC', sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+    }
+
+    #viewer {
+      width: 80%;
+      height: 600px;
+      margin: 20px auto;
+      border: 1px solid #ccc;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      background-color: #fff;
+    }
+
+    #nav {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #toc {
+      font-size: 16px;
+      padding: 8px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+
+    button {
+      font-size: 16px;
+      padding: 8px 16px;
+      margin: 0 10px;
+      border: none;
+      border-radius: 4px;
+      background-color: #4CAF50;
+      color: #fff;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    h1, h2, h3, h4, h5, h6 {
+      font-family: 'Noto Serif', serif;
+    }
+
+    p, li {
+      line-height: 1.5;
+    }
+  </style>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.1.5/jszip.min.js"></script>
+  <script src="https://futurepress.github.io/epub.js/dist/epub.js"></script>
+</head>
+<body>
+  <h1 style="text-align: center;">EPUB 阅读器</h1>
+  <div id="nav">
+    <select id="toc"></select>
+  </div>
+
+  <div id="viewer"></div>
+  <div style="text-align: center;">
+    <button onclick="prevPage()" id="prev" disabled>上一页</button>
+    <button onclick="nextPage()" id="next" disabled>下一页</button>
+  </div>
+
+  <script>
+    var $viewer = document.getElementById("viewer");
+    var rendition;
+
+    // Load the opf
+    var book = ePub("https://file.notion.so/f/f/9cef305e-2b0f-490d-9ec3-dc603b2d3615/59479293-2b3e-402b-b019-bdc075fec72d/%E4%BD%A0%E5%BD%93%E5%83%8F%E9%B8%9F%E9%A3%9E%E5%BE%80%E4%BD%A0%E7%9A%84%E5%B1%B1_--_%E5%A1%94%E6%8B%89%E9%9F%A6%E6%96%AF%E7%89%B9%E5%BC%97_--_2019_--_41ac6f53ca340ea52a2988bcf733e17c_--_Annas_Archive.epub?id=6ec721ee-5725-4416-b72b-4e9209ade077&table=block&spaceId=9cef305e-2b0f-490d-9ec3-dc603b2d3615&expirationTimestamp=1712714400000&signature=tnlXm5zag2e1l_Jwmm1ncsHecC0OWoJscKmQz2vgX-k&downloadName=%E4%BD%A0%E5%BD%93%E5%83%8F%E9%B8%9F%E9%A3%9E%E5%BE%80%E4%BD%A0%E7%9A%84%E5%B1%B1+--+%E5%A1%94%E6%8B%89%C2%B7%E9%9F%A6%E6%96%AF%E7%89%B9%E5%BC%97+--+2019+--+41ac6f53ca340ea52a2988bcf733e17c+--+Anna%E2%80%99s+Archive.epub", {
+      worker: "https://futurepress.github.io/epub.js/dist/epub.worker.min.js"
+    });
+
+    book.loaded.navigation.then(function(toc){
+      var $select = document.getElementById("toc"),
+          docfrag = document.createDocumentFragment();
+
+      toc.forEach(function(chapter) {
+        var option = document.createElement("option");
+        option.textContent = chapter.label;
+        option.value = chapter.href;
+
+        docfrag.appendChild(option);
+      });
+
+      $select.appendChild(docfrag);
+
+      $select.onchange = function(){
+          var index = $select.selectedIndex,
+              url = $select.options[index].value;
+          rendition.display(url);
+          return false;
+      };
+
+      rendition = book.renderTo($viewer, {
+        width: "100%",
+        height: 600
+      });
+
+      rendition.display().then(function() {
+        console.log("Rendered initial chapter");
+        updateButtons();
+      });
+    });
+
+    function prevPage() {
+      if (rendition) {
+        rendition.prev();
+        updateButtons();
+      }
+    }
+
+    function nextPage() {
+      if (rendition) {
+        rendition.next();
+        updateButtons();
+      }
+    }
+
+    function updateButtons() {
+      if (rendition) {
+        var prev = rendition.prev();
+        var next = rendition.next();
+        document.getElementById("prev").disabled = !prev;
+        document.getElementById("next").disabled = !next;
+      } else {
+        document.getElementById("prev").disabled = true;
+        document.getElementById("next").disabled = true;
+      }
+    }
+  </script>
+</body>
+</html>
